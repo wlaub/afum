@@ -3,6 +3,8 @@ import time
 
 import shutil
 
+import webbrowser
+
 import upload
 import config
 from tttweb.uploader.tttapi import TTTAPI
@@ -156,7 +158,7 @@ class App():
 
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'tags', 'authors']:
+        for key in ['name', 'recording', 'date', 'desc', 'tags', 'authors', 'refresh_queue']:
             self.window[key].expand(expand_x = True)
         for key in ['queue', 'file_list', 'repo_list', 'image_list']:
             self.window[key].expand(expand_y = True)
@@ -293,7 +295,9 @@ class App():
                 self.delete_selection('repo_list')
             elif event == 'save_button':
                 self.queue[self.upload_sel].save()
-
+            elif event == 'url_text':
+                if self.uploaded:
+                    webbrowser.open(self.window['url_text'].get(), new=2)
 
                 
         print(f'Ending app')
