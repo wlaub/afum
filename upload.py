@@ -100,7 +100,9 @@ class Upload():
         return self.add_file_generic(path, self.imagedir, self.images, cache)
 
     def load(self):
-        self.data = json.load(open(self.get_filename(), 'r'))
+        filename = self.get_filename()
+        raw = open(filename, 'r').read()
+        self.data = json.loads(raw)
 
     def save(self):
         filename = self.get_filename()
