@@ -67,7 +67,6 @@ class App():
         input_width = 120
 
         self.layout = [
-            [sg.Text(f'Host: {self.upload_url}'), ],
             [
             #upload queue
             sg.Column( expand_y = True,
@@ -94,7 +93,7 @@ class App():
                 [sg.Text('Time:')], [sg.Input(key = 'date', enable_events=True)],
                 [sg.Text('Description:')], [sg.Multiline(key = 'desc', expand_x = True, size=(0,5), enable_events=True)],
                 [
-                    sg.Column( expand_x = True, expand_y = True, layout=[
+                    sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
                     [sg.Text('Tags:')],
                     [
                         DListbox(
@@ -107,7 +106,7 @@ class App():
                     ],
                     [ sg.Input(key='new_tag', size=(1,1)), sg.Button('Add', key = 'tags_list+listbox_add+new_tag', enable_events=True)]
                     ]),
-                    sg.Column( expand_x = True, expand_y = True, layout=[
+                    sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
                     [sg.Text('Authors')],
                     [
                         DListbox(
@@ -121,9 +120,6 @@ class App():
                     [ sg.Input(key='new_author', size=(1,1)), sg.Button('Add', key = 'authors_list+listbox_add+new_author', enable_events=True)]
                     ])
                 ],
-
-                [sg.Text('Tags:')], [sg.Input(key = 'tags', enable_events=True)],
-                [sg.Text('Authors:')], [sg.Input(key = 'authors', enable_events=True)],
                 [   sg.Button('Upload', key='upload_button', disabled=True), 
                     sg.Button('Delete', key='delete_button', disabled=False), 
                     sg.Button('Revert', key='revert_button', disabled=True),
@@ -160,6 +156,7 @@ class App():
             ),
            
         ],
+            [sg.Text(f'Host: {self.api.base_url}'), ],
             [sg.Multiline(key='console', size = (20,10))],
         ]
 
@@ -216,7 +213,7 @@ class App():
         self.window['console'].print(*args, **kwargs)
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'tags', 'authors', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author']:
+        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author']:
             self.window[key].expand(expand_x = True)
         for key in ['queue', 'file_list', 'repo_list', 'image_list']:
             self.window[key].expand(expand_y = True)
