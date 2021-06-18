@@ -112,6 +112,7 @@ class App():
         self.browse_paths = {k: None for k in ['image_list', 'file_list', 'repo_list']}
 
     def get_queue(self):
+        self.queue = {}
         dirs = os.listdir(self.upload_dir)
         for name in dirs:
             if name in self.queue.keys(): continue
@@ -131,6 +132,7 @@ class App():
         
         if self.upload_sel in new_vals:
             box.set_value([self.upload_sel])
+            self.update_form(self.upload_sel, force=True)
         else:
             self.upload_sel = None
             self.clear_form()
@@ -192,6 +194,7 @@ class App():
         self.window['date'].update('')
         for key in ['image_list', 'file_list', 'repo_list']:
             self.window[key].update([])
+        self.window['url_text'].update('')
 
     def update_form(self, upsel, force = False):
         if not force and upsel == self.upload_sel: return
@@ -210,8 +213,10 @@ class App():
         uploaded = self.uploaded
         if uploaded:
             self.set_form_locked(True)
+            self.window['url_text'].set_cursor(cursor='hand2')
         else:
             self.set_form_locked(False)
+            self.window['url_text'].set_cursor(cursor='')
 
         self.window['url_text'].update(url_text)
 
