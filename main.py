@@ -25,6 +25,17 @@ print(res)
 import PySimpleGUI as sg
 import tkinter as tk
 
+class DListBox(sg.listbox):
+
+    def delete_selection(self):
+        values = self.get_list_values()
+        remove = self.get()
+        for item in remove: values.remove(item)
+        self.update(values)
+
+        
+
+
 class App():
 
     DATEFMT = '%Y-%m-%d %H:%M:%S'
@@ -91,7 +102,7 @@ class App():
                     select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
                     key='image_list')],
                 [sg.Text('Files'), sg.Button('Browse', key='file_browse', )],
-                [sg.Listbox(
+                [DListbox(
                     values = [], 
                     size=(file_width,file_height), 
                     enable_events = True, 
