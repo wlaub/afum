@@ -25,8 +25,11 @@ print(res)
 import PySimpleGUI as sg
 import tkinter as tk
 
-class DListBox(sg.listbox):
+class DListbox(sg.Listbox):
 
+    def setup(self):
+        self.bind('<Delete>', '+listbox_delete')
+    
     def delete_selection(self):
         values = self.get_list_values()
         remove = self.get()
@@ -95,7 +98,7 @@ class App():
             sg.Column( expand_y=True,
             layout = [
                 [sg.Text('Images'), sg.Button('Browse', key='image_browse',)],
-                [sg.Listbox(
+                [DListbox(
                     values = [], 
                     size=(file_width,file_height), 
                     enable_events = True, 
@@ -109,7 +112,7 @@ class App():
                     select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
                     key='file_list')],
                 [sg.Text('Repositories'), sg.Button('Browse', key='repo_browse')],
-                [sg.Listbox(
+                [DListbox(
                     values = [], 
                     size=(file_width,file_height), 
                     enable_events = True, 
@@ -270,7 +273,7 @@ class App():
         self.window.Finalize()
 
         for key in ['image_list', 'file_list', 'repo_list']:
-            self.window[key].bind('<Delete>', '-delete')
+            self.window[key].setup()
 
         self.update_queuebox()
         self.expand_ui()
@@ -281,6 +284,9 @@ class App():
             event, values = window.read()
             print(event)
             print(values)
+            event, *args = event.split('+')
+            print(event, args)
+
             if event == sg.WIN_CLOSED or event == 'Exit':
                 break
 
@@ -303,12 +309,8 @@ class App():
                 self.add_files('file_list')
             elif event == 'repo_browse':
                 self.add_files('repo_list')
-            elif event == 'image_list-delete':
-                self.delete_selection('image_list')
-            elif event == 'file_list-delete':
-                self.delete_selection('file_list')
-            elif event == 'repo_list-delete':
-                self.delete_selection('repo_list')
+            elif 'listbox_delete' in args:
+                window[event].delete_selection()
             elif event == 'save_button':
                 self.queue[self.upload_sel].save()
             elif event == 'url_text':
