@@ -104,6 +104,11 @@ class Upload():
         raw = open(filename, 'r').read()
         self.data = json.loads(raw)
 
+    def revert(self):
+        filename = self.get_filename()+'.orig'
+        raw = open(filename, 'r').read()
+        self.data = json.loads(raw)
+
     def save(self):
         filename = self.get_filename()
 

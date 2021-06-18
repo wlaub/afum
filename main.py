@@ -147,6 +147,13 @@ class App():
         self.upload_sel = None
         self.update_queuebox()
 
+    def revert_upload(self):
+        if self.upload_sel == None: return
+
+        up = self.queue[self.upload_sel]
+        up.revert()
+        self.update_form(self.upload_sel,force = True)
+
 
     def expand_ui(self):
         for key in ['name', 'recording', 'date', 'desc', 'tags', 'authors']:
@@ -184,8 +191,8 @@ class App():
         for key in ['image_list', 'file_list', 'repo_list']:
             self.window[key].update([])
 
-    def update_form(self, upsel):
-        if upsel == self.upload_sel: return
+    def update_form(self, upsel, force = False):
+        if not force and upsel == self.upload_sel: return
         self.upload_sel = upsel
         up = self.queue[upsel]
 
@@ -225,7 +232,7 @@ class App():
         if self.uploaded: return
 
         for key in ['name', 'desc', 'recording']:
-            up.data[key] = self.window[key].get()
+            up.data[key] = self.window[key].get().strip('\n')
         for key in ['tags', 'authors']:
             up.data[key] = self.split_input(self.window[key].get())
 
@@ -270,6 +277,8 @@ class App():
                 self.update_queuebox()
             elif event == 'delete_button':
                 self.delete_upload()
+            elif event == 'revert_button':
+                self.revert_upload()
             elif event == 'image_browse':
                 self.add_files('image_list')
             elif event == 'file_browse':
