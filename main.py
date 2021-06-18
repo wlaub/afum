@@ -1,5 +1,6 @@
 import os
 import time
+import math
 
 import shutil
 
@@ -43,8 +44,68 @@ class DListbox(sg.Listbox):
                 values.append(item)
         self.update(values)
 
+class RepoTable(sg.Table):
+    
+    def __init__(self, **kwargs):
+        kwargs['headings'] = ['Repo', 'File', 'Commit']
+
+        width = kwargs.pop('width')
+        repo_check_width = 8
+        repo_width = int(math.ceil((width-repo_check_width)/2))
+        repo_remote_width = width - repo_check_width - repo_width
+        repo_col_widths = [repo_remote_width, repo_width, repo_check_width]
+        kwargs['col_widths'] = repo_col_widths
        
-        
+        kwargs['auto_size_columns'] = False
+        kwargs['justification'] = 'left'
+        kwargs['background_color'] = 'white'
+        kwargs['text_color'] = 'black'
+
+        self.disabled = True
+
+        super().__init__(**kwargs)
+
+    def setup(self):
+        self.bind('<Delete>', '+listbox_delete')
+
+    def update(self, **kwargs):
+        self.disabled = kwargs.pop('disabled', self.disabled)
+        super().update(**kwargs)
+
+    def update_dict(self, **kwargs):
+        items = kwargs.pop('values')
+        result = []
+        for item in items:
+            result.append([
+                item['repo'],
+                item['filename'],
+                item['commit'],
+                ])
+
+        kwargs['values'] = result
+        super().update(**kwargs)
+
+    def get_row_values(self):
+        return self.Values
+
+    def get_upload_data(self):
+        result = []
+        for repo, filename, commit in self.get_row_values():
+            result.append({
+                'repo': repo,
+                'filename': filename,
+                'commit': commit
+                })
+        return result
+
+    def delete_selection(self):
+        if self.disabled: return
+        selection = self.SelectedRows
+        values = self.get_row_values()
+        remove = [values[x] for x in selection]
+        for item in remove: values.remove(item)
+        self.update(values = values)
+
 
 
 class App():
@@ -145,13 +206,16 @@ class App():
                     enable_events = True, 
                     select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
                     key='file_list')],
-                [sg.Text('Repositories'), sg.Button('Browse', key='repo_browse')],
-                [DListbox(
-                    values = [], 
-                    size=(file_width,file_height), 
-                    enable_events = True, 
-                    select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                    key='repo_list')],
+                [sg.Text('Repositories')],
+                [
+                    RepoTable(
+                        values = [],
+                        width = 62,
+                        num_rows = 3,
+                        headings = ["test","test","test"],
+                        key='repo_table'
+                    )
+                ],
             ]
             ),
            
@@ -160,7 +224,7 @@ class App():
             [sg.Multiline(key='console', size = (20,10))],
         ]
 
-        self.browse_paths = {k: None for k in ['image_list', 'file_list', 'repo_list']}
+        self.browse_paths = {k: None for k in ['image_list', 'file_list']}
 
     def get_queue(self):
         self.queue = {}
@@ -213,13 +277,13 @@ class App():
         self.window['console'].print(*args, **kwargs)
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author']:
+        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table']:
             self.window[key].expand(expand_x = True)
-        for key in ['queue', 'file_list', 'repo_list', 'image_list']:
+        for key in ['queue', 'file_list', 'repo_table', 'image_list']:
             self.window[key].expand(expand_y = True)
 
     def set_form_locked(self, locked = False):
-        for key in ['upload_button', 'revert_button', 'save_button', 'recording_browse', 'file_browse', 'image_browse', 'repo_browse', 'name', 'recording', 'date', 'desc', 'tags_list', 'authors_list', 'tags_list+listbox_add+new_tag', 'new_tag', 'authors_list+listbox_add+new_author', 'new_author']:
+        for key in ['upload_button', 'revert_button', 'save_button', 'recording_browse', 'file_browse', 'image_browse', 'repo_table', 'name', 'recording', 'date', 'desc', 'tags_list', 'authors_list', 'tags_list+listbox_add+new_tag', 'new_tag', 'authors_list+listbox_add+new_author', 'new_author']:
             self.window[key].update(disabled = locked)
 
     def add_files(self, key):
@@ -228,21 +292,15 @@ class App():
         self.window[key].add_items_unique(files)
         self.browse_paths[key] = os.path.dirname(files[0])
 
-    def delete_selection(self, key):
-        element = self.window[key]
-        values = element.get_list_values()
-        remove = element.get()
-        for item in remove: values.remove(item)
-        element.update(values)
-
     def clear_form(self):
         for key in ['name', 'desc', 'recording', 'new_tag', 'new_author']:
             self.window[key].update('')
 ###        for key in ['tags', 'authors']:
 ###            self.window[key].update('')
         self.window['date'].update('')
-        for key in ['image_list', 'file_list', 'repo_list', 'tags_list', 'authors_list']:
+        for key in ['image_list', 'file_list', 'tags_list', 'authors_list']:
             self.window[key].update([])
+        self.window['repo_table'].update(values = [])
         self.window['url_text'].update('')
 
     def update_form(self, upsel, force = False):
@@ -273,6 +331,8 @@ class App():
             print(key, src, up.data[src])
             self.window[key].update(up.data[src])
 
+        self.window['repo_table'].update_dict(values = up.data['repo_attachments'])
+
         if uploaded: #This has to happen after updating the values or they won't
             self.set_form_locked(True)
             self.window['url_text'].set_cursor(cursor='hand2')
@@ -295,12 +355,14 @@ class App():
         for key, src in [('image_list', 'images'),('file_list', 'attachments'),('tags_list', 'tags'),('authors_list', 'authors')]:
             up.data[src] = self.window[key].get_list_values()
 
+        up.data['repo_attachments'] = self.window['repo_table'].get_upload_data()
+
     def run(self):
         print(f'Starting app')
         self.window = window = sg.Window("AFUM", self.layout,)
         self.window.Finalize()
 
-        for key in ['image_list', 'file_list', 'repo_list', 'tags_list', 'authors_list']:
+        for key in ['image_list', 'file_list', 'repo_table', 'tags_list', 'authors_list']:
             self.window[key].setup()
 
         self.update_queuebox()
@@ -334,8 +396,6 @@ class App():
                 self.add_files('image_list')
             elif event == 'file_browse':
                 self.add_files('file_list')
-            elif event == 'repo_browse':
-                self.add_files('repo_list')
             elif 'listbox_delete' in args:
                 window[event].delete_selection()
             elif len(args) > 1 and args[0] == 'listbox_add':
