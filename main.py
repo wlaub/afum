@@ -58,8 +58,9 @@ class RepoTable(sg.Table):
        
         kwargs['auto_size_columns'] = False
         kwargs['justification'] = 'left'
-        kwargs['background_color'] = 'white'
-        kwargs['text_color'] = 'black'
+        kwargs['background_color'] = sg.theme_input_background_color()
+        kwargs['text_color'] = sg.theme_input_text_color()
+        kwargs['selected_row_colors'] = ['white', 'black']
 
         self.disabled = True
 
@@ -411,6 +412,8 @@ class App():
                 
         print(f'Ending app')
         window.close()
+
+sg.theme('SystemDefault 1')
 
 app = App(config.UPLOAD_DIR, config.UPLOAD_URL, (secrets.user, secrets.password))
 
