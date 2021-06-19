@@ -25,88 +25,7 @@ print(res)
 """
 import PySimpleGUI as sg
 import tkinter as tk
-
-class DListbox(sg.Listbox):
-
-    def setup(self):
-        self.bind('<Delete>', '+listbox_delete')
-    
-    def delete_selection(self):
-        values = self.get_list_values()
-        remove = self.get()
-        for item in remove: values.remove(item)
-        self.update(values)
-
-    def add_items_unique(self, items):
-        values = self.get_list_values()
-        for item in items:
-            if len(item) > 0 and  not item in values:
-                values.append(item)
-        self.update(values)
-
-class RepoTable(sg.Table):
-    
-    def __init__(self, **kwargs):
-        kwargs['headings'] = ['Repo', 'File', 'Commit']
-
-        width = kwargs.pop('width')
-        repo_check_width = 8
-        repo_width = int(math.ceil((width-repo_check_width)/2))
-        repo_remote_width = width - repo_check_width - repo_width
-        repo_col_widths = [repo_remote_width, repo_width, repo_check_width]
-        kwargs['col_widths'] = repo_col_widths
-       
-        kwargs['auto_size_columns'] = False
-        kwargs['justification'] = 'left'
-        kwargs['background_color'] = sg.theme_input_background_color()
-        kwargs['text_color'] = sg.theme_input_text_color()
-        kwargs['selected_row_colors'] = ['white', 'black']
-
-        self.disabled = True
-
-        super().__init__(**kwargs)
-
-    def setup(self):
-        self.bind('<Delete>', '+listbox_delete')
-
-    def update(self, **kwargs):
-        self.disabled = kwargs.pop('disabled', self.disabled)
-        super().update(**kwargs)
-
-    def update_dict(self, **kwargs):
-        items = kwargs.pop('values')
-        result = []
-        for item in items:
-            result.append([
-                item['repo'],
-                item['filename'],
-                item['commit'],
-                ])
-
-        kwargs['values'] = result
-        super().update(**kwargs)
-
-    def get_row_values(self):
-        return self.Values
-
-    def get_upload_data(self):
-        result = []
-        for repo, filename, commit in self.get_row_values():
-            result.append({
-                'repo': repo,
-                'filename': filename,
-                'commit': commit
-                })
-        return result
-
-    def delete_selection(self):
-        if self.disabled: return
-        selection = self.SelectedRows
-        values = self.get_row_values()
-        remove = [values[x] for x in selection]
-        for item in remove: values.remove(item)
-        self.update(values = values)
-
+import widgets
 
 
 class App():
@@ -158,7 +77,7 @@ class App():
                     sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
                     [sg.Text('Tags:')],
                     [
-                        DListbox(
+                        widgets.DListbox(
                             values=[], 
                             enable_events=True, 
                             select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
@@ -171,7 +90,7 @@ class App():
                     sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
                     [sg.Text('Authors')],
                     [
-                        DListbox(
+                        widgets.DListbox(
                             values=[], 
                             enable_events=True, 
                             select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
@@ -194,14 +113,14 @@ class App():
             sg.Column( expand_y=True,
             layout = [
                 [sg.Text('Images'), sg.Button('Browse', key='image_browse',)],
-                [DListbox(
+                [widgets.DListbox(
                     values = [], 
                     size=(file_width,file_height), 
                     enable_events = True, 
                     select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
                     key='image_list')],
                 [sg.Text('Files'), sg.Button('Browse', key='file_browse', )],
-                [DListbox(
+                [widgets.DListbox(
                     values = [], 
                     size=(file_width,file_height), 
                     enable_events = True, 
@@ -209,7 +128,7 @@ class App():
                     key='file_list')],
                 [sg.Text('Repositories')],
                 [
-                    RepoTable(
+                    widgets.RepoTable(
                         values = [],
                         width = 62,
                         num_rows = 3,
