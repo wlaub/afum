@@ -264,7 +264,9 @@ class App():
         for key in ['name', 'desc', 'recording']:
             newval = up.data[key]
             self.window[key].update(newval)
+
         self.window['date'].update(time.strftime(self.DATEFMT, time.localtime(up.data['date'])))
+
         for key, src in [('image_list', 'images'),('file_list', 'attachments'),('tags_list', 'tags'),('authors_list', 'authors')]:
             print(key, src, up.data[src])
             self.window[key].update(up.data[src])
@@ -289,7 +291,16 @@ class App():
             self.window['upload_button'].update(disabled = True)
         elif not self.uploaded:
             self.window['upload_button'].update(disabled = False)
-    
+
+    def remove_bad_authors(self):
+        auths = self.window['authors_list'].get_list_values()
+        found, missing = self.api.get_authors(auths)
+        for bad in missing:
+            self.print(f'!! Removing invalid author name {bad}')
+            auths.remove(bad)
+        self.window['authors_list'].update(values = auths)
+
+
     def update_upload(self, upsel):
         up = self.queue[upsel]
         if self.uploaded: return
@@ -393,6 +404,8 @@ class App():
 
             if event in ['queue', 'tags_list', 'missing_tags_button']:
                 self.update_tags()
+            if event in ['queue', 'authors_list']:
+                self.remove_bad_authors()
                 
         print(f'Ending app')
         window.close()
