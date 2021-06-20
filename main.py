@@ -41,6 +41,8 @@ class App():
         self.upload_sel = None
 
         self.api = TTTAPI(self.upload_url, auth)
+        self.uploaded = False
+        self.dry = False #if True, then api create calls should do a dry run
 
         file_height = 2
         file_width = 80
@@ -138,9 +140,24 @@ class App():
                 ],
             ]
             ),
+            sg.Column( expand_y = True,
+                layout = [
+                    [sg.Text('Missing Tags:')],
+                    [sg.Listbox(
+                        values = [],
+                        size = (20,1),
+                        select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
+                        key = 'missing_tags_list',
+                        )],
+                    [sg.Column(
+                        layout=[[sg.Button('Create', key='missing_tags_button', enable_events=True)]],
+                         expand_x =True, pad=(0,0), vertical_alignment='bottom')
+                    ],
+                ]
+            ),
            
         ],
-            [sg.Text(f'Host: {self.api.base_url}'), ],
+            [sg.Text(f'Host: {self.api.base_url}')],
             [sg.Multiline(key='console', size = (20,10))],
         ]
 
@@ -197,9 +214,9 @@ class App():
         self.window['console'].print(*args, **kwargs)
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table']:
+        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table', 'missing_tags_button']:
             self.window[key].expand(expand_x = True)
-        for key in ['queue', 'file_list', 'repo_table', 'image_list']:
+        for key in ['queue', 'file_list', 'repo_table', 'image_list', 'missing_tags_list']:
             self.window[key].expand(expand_y = True)
 
     def set_form_locked(self, locked = False):
@@ -213,6 +230,7 @@ class App():
         self.browse_paths[key] = os.path.dirname(files[0])
 
     def clear_form(self):
+        self.uploaded = False
         for key in ['name', 'desc', 'recording', 'new_tag', 'new_author']:
             self.window[key].update('')
 ###        for key in ['tags', 'authors']:
@@ -259,7 +277,13 @@ class App():
         else:
             self.window['url_text'].set_cursor(cursor='')
 
-
+    def update_tags(self):
+        if self.upload_sel == None:
+            self.window['missing_tags_list'].update([])
+        up = self.queue[self.upload_sel]
+        tags = up.data['tags']
+        found, missing = self.api.get_tags(tags)
+        self.window['missing_tags_list'].update(missing)
 
     def update_upload(self, upsel):
         up = self.queue[upsel]
@@ -277,6 +301,38 @@ class App():
 
         up.data['repo_attachments'] = self.window['repo_table'].get_upload_data()
 
+    def create_tags(self):
+        new_tags = []
+        tags = self.window['missing_tags_list'].get()
+        if len(tags) == 0:
+            tags = self.window['missing_tags_list'].get_list_values()
+
+        for tagname in tags:
+            event, res = widgets.popup_new_tag(tagname)
+            if event == 'create':
+                new_tags.append(res)
+            elif event == 'abort': 
+                self.print('Create tags aborted.')
+                return
+            elif event == 'cancel':
+                self.print(f'Skipping tag {tagname}')
+            elif event == 'error':
+                self.print(f'Skipping tag {tagname} because: {res["description"]}')
+
+        for res in new_tags:
+            if len(res['description']) == 0:
+                self.print(f'Skipping tag {res["name"]} with empty description')
+                new_tags.remove(res)
+
+        results = self.api.create_tags(new_tags, dry=self.dry)
+
+        for status, obj in results:
+            print(f'{status}: {obj}')
+            if status == 201:
+                self.print(f'Created new tag {obj["name"]}')
+            else:
+                self.print(f'Failed to create tag, {status} :{obj}')
+
     def run(self):
         print(f'Starting app')
         self.window = window = sg.Window("AFUM", self.layout,)
@@ -287,7 +343,7 @@ class App():
 
         self.update_queuebox()
         self.expand_ui()
-        self.set_form_locked(True)
+        self.clear_form()
         print(f'App started')
         while True:
             event, values = window.read()
@@ -327,7 +383,11 @@ class App():
             elif event == 'url_text':
                 if self.uploaded:
                     webbrowser.open(self.window['url_text'].get(), new=2)
+            elif event == 'missing_tags_button':
+                self.create_tags() 
 
+            if event in ['queue', 'tags_list', 'missing_tags_button']:
+                self.update_tags()
                 
         print(f'Ending app')
         window.close()

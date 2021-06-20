@@ -2,6 +2,28 @@ import math
 
 import PySimpleGUI as sg
 
+def popup_new_tag(tagname):
+    window = sg.Window(f'Create new tag: {tagname}',
+    [
+        [sg.Text(f'New tag: {tagname}')],
+        [sg.Text('Tag Description:')],
+        [sg.Multiline( key = 'desc', size=(80,16))],
+        [sg.Column([[]], expand_x=True),sg.Button('Abort', key='abort', enable_events=True), sg.Button('Skip', key='cancel', enable_events=True), sg.Button('Create', key='create', enable_events=True)],
+    ]
+    )
+
+    
+    event,values = window.read()
+    try:
+        description = window['desc'].get().strip('\n')
+    except Exception as e:
+        event = 'error'
+        description = str(e)
+    window.close()
+    del window
+
+    return event, {'name': tagname, 'description': description}
+
 class DListbox(sg.Listbox):
 
     def setup(self):
