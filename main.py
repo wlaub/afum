@@ -285,6 +285,11 @@ class App():
         found, missing = self.api.get_tags(tags)
         self.window['missing_tags_list'].update(missing)
 
+        if len(missing) != 0:
+            self.window['upload_button'].update(disabled = True)
+        elif not self.uploaded:
+            self.window['upload_button'].update(disabled = False)
+    
     def update_upload(self, upsel):
         up = self.queue[upsel]
         if self.uploaded: return
