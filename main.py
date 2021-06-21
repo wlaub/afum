@@ -25,7 +25,9 @@ print(res)
 """
 import PySimpleGUI as sg
 import tkinter as tk
+
 import widgets
+import layout
 
 
 class App():
@@ -44,11 +46,9 @@ class App():
         self.uploaded = False
         self.dry = False #if True, then api create calls should do a dry run
 
-        file_height = 2
-        file_width = 80
+        self.layout = layout.Layout(self).get_layout()
 
-        input_width = 120
-
+        """
         self.layout = [
             [
             #upload queue
@@ -103,13 +103,15 @@ class App():
                     [ sg.Input(key='new_author', size=(1,1)), sg.Button('Add', key = 'authors_list+listbox_add+new_author', enable_events=True)]
                     ])
                 ],
+                [sg.Text('Upload URL:'), sg.Text('', key='url_text', enable_events=True, auto_size_text=True, size=(len(upload_url)+20,1), text_color = 'blue'),],
+ 
                 [   sg.Button('Upload', key='upload_button', disabled=True), 
-                    sg.Button('Delete', key='delete_button', disabled=False), 
-                    sg.Button('Revert', key='revert_button', disabled=True),
                     sg.Button('Save', key='save_button', disabled=True),
-],
-                [sg.Text('Upload URL:'), sg.Text('', key='url_text', enable_events=True, auto_size_text=True, size=(len(upload_url)+20,1), text_color = 'blue'),]
-             ]
+                    sg.Button('Reload', key='reload_button', disabled=True),
+                    sg.Button('Revert', key='revert_button', disabled=True),
+                    sg.Button('Delete', key='delete_button', disabled=False), 
+                    ],
+            ]
             ),
             #Files
             sg.Column( expand_y=True,
@@ -160,7 +162,7 @@ class App():
             [sg.Text(f'Host: {self.api.base_url}')],
             [sg.Multiline(key='console', size = (20,10))],
         ]
-
+        """
         self.browse_paths = {k: None for k in ['image_list', 'file_list']}
 
     def get_queue(self):
@@ -210,6 +212,15 @@ class App():
         up.revert()
         self.update_form(self.upload_sel,force = True)
 
+    def reload_upload(self):
+        if self.upload_sel == None: return
+
+        up = self.queue[self.upload_sel]
+        up.load()
+        self.update_form(self.upload_sel,force = True)
+
+
+
     def print(self, *args, **kwargs):
         self.window['console'].print(*args, **kwargs)
 
@@ -220,8 +231,10 @@ class App():
             self.window[key].expand(expand_y = True)
 
     def set_form_locked(self, locked = False):
-        for key in ['upload_button', 'revert_button', 'save_button', 'recording_browse', 'file_browse', 'image_browse', 'repo_table', 'name', 'recording', 'date', 'desc', 'tags_list', 'authors_list', 'tags_list+listbox_add+new_tag', 'new_tag', 'authors_list+listbox_add+new_author', 'new_author']:
-            self.window[key].update(disabled = locked)
+        for key, elem in self.window.key_dict.items():
+            if elem.metadata == None: continue
+            if 'uploaded' in elem.metadata.get('lock', []):
+                elem.update(disabled = locked)
 
     def add_files(self, key):
         files = sg.tk.filedialog.askopenfilenames(initialdir = self.browse_paths[key], parent=self.window.TKroot)
@@ -384,6 +397,8 @@ class App():
                 self.delete_upload()
             elif event == 'revert_button':
                 self.revert_upload()
+            elif event == 'reload_button':
+                self.reload_upload()
             elif event == 'image_browse':
                 self.add_files('image_list')
             elif event == 'file_browse':
