@@ -62,6 +62,7 @@ class Upload():
             'images': [],
             'attachments': [],
             'repo_attachments': [],
+            'license': 8,
             }
         self.basedir = basedir
         self.name = name

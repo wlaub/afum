@@ -24,7 +24,22 @@ def popup_new_tag(tagname):
 
     return event, {'name': tagname, 'description': description}
 
-class DListbox(sg.Listbox):
+class ValidMixin():
+
+    def set_valid(self, valid):
+        self.valid = valid
+        if not valid:
+            self.BackgroundColor = '#ffcccc'
+        else:
+            self.BackgroundColor = 'white'
+        self.Widget.configure(background=self.BackgroundColor)
+
+class ValidListbox(sg.Listbox, ValidMixin):
+    pass
+
+class VInput(sg.Input, ValidMixin): pass
+
+class DListbox(sg.Listbox, ValidMixin):
 
     def setup(self):
         self.bind('<Delete>', '+listbox_delete')
@@ -41,6 +56,7 @@ class DListbox(sg.Listbox):
             if len(item) > 0 and  not item in values:
                 values.append(item)
         self.update(values)
+
 
 class RepoTable(sg.Table):
     

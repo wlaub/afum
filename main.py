@@ -9,7 +9,15 @@ import webbrowser
 import upload
 import config
 from tttweb.uploader.tttapi import TTTAPI
+from tttweb.uploader import uploader
 import secrets
+
+import PySimpleGUI as sg
+import tkinter as tk
+
+import widgets
+import layout
+
 up = upload.Upload(config.UPLOAD_DIR, 'delete_me')
 
 up.save()
@@ -23,11 +31,6 @@ print(res)
 res = api.get_recording_name('xxx')
 print(res)
 """
-import PySimpleGUI as sg
-import tkinter as tk
-
-import widgets
-import layout
 
 
 class App():
@@ -37,6 +40,7 @@ class App():
     def __init__(self, upload_dir, upload_url, auth):
         self.upload_url = upload_url
         self.upload_dir = upload_dir
+        self.auth = auth
         self.queue = {}
 
         self.get_queue()
@@ -48,121 +52,6 @@ class App():
 
         self.layout = layout.Layout(self).get_layout()
 
-        """
-        self.layout = [
-            [
-            #upload queue
-            sg.Column( expand_y = True,
-            layout=[
-                [sg.Text('Pending uploads:')],
-            [
-                sg.Listbox(key = 'queue', 
-                    values = self.queue.keys(), 
-                    default_values = list(self.queue.keys())[0], 
-                    size = (20, 20),
-                    select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
-                    enable_events = True,
-                    )
-            ],
-                [sg.Column(layout=[[sg.Button('Refresh', key='refresh_queue', enable_events=True)]], 
-                    expand_x =True, pad=(0,0), vertical_alignment='bottom')]
-            ]
-            ),
-            #Main form
-            sg.Column( expand_y = True,
-            layout=[ 
-                [sg.Text('Title:')], [sg.Input(key = 'name', enable_events=True)],
-                [sg.Text('Recording:')], [sg.Input(key = 'recording'), sg.FileBrowse('Browse', key='recording_browse', enable_events=True)],
-                [sg.Text('Time:')], [sg.Input(key = 'date', enable_events=True)],
-                [sg.Text('Description:')], [sg.Multiline(key = 'desc', expand_x = True, size=(0,5), enable_events=True)],
-                [
-                    sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
-                    [sg.Text('Tags:')],
-                    [
-                        widgets.DListbox(
-                            values=[], 
-                            enable_events=True, 
-                            select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                            size = (20,10),
-                            key = 'tags_list',
-                            )
-                    ],
-                    [ sg.Input(key='new_tag', size=(1,1)), sg.Button('Add', key = 'tags_list+listbox_add+new_tag', enable_events=True)]
-                    ]),
-                    sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
-                    [sg.Text('Authors')],
-                    [
-                        widgets.DListbox(
-                            values=[], 
-                            enable_events=True, 
-                            select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                            size = (20,10),
-                            key = 'authors_list',
-                            )
-                    ],
-                    [ sg.Input(key='new_author', size=(1,1)), sg.Button('Add', key = 'authors_list+listbox_add+new_author', enable_events=True)]
-                    ])
-                ],
-                [sg.Text('Upload URL:'), sg.Text('', key='url_text', enable_events=True, auto_size_text=True, size=(len(upload_url)+20,1), text_color = 'blue'),],
- 
-                [   sg.Button('Upload', key='upload_button', disabled=True), 
-                    sg.Button('Save', key='save_button', disabled=True),
-                    sg.Button('Reload', key='reload_button', disabled=True),
-                    sg.Button('Revert', key='revert_button', disabled=True),
-                    sg.Button('Delete', key='delete_button', disabled=False), 
-                    ],
-            ]
-            ),
-            #Files
-            sg.Column( expand_y=True,
-            layout = [
-                [sg.Text('Images'), sg.Button('Browse', key='image_browse',)],
-                [widgets.DListbox(
-                    values = [], 
-                    size=(file_width,file_height), 
-                    enable_events = True, 
-                    select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                    key='image_list')],
-                [sg.Text('Files'), sg.Button('Browse', key='file_browse', )],
-                [widgets.DListbox(
-                    values = [], 
-                    size=(file_width,file_height), 
-                    enable_events = True, 
-                    select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                    key='file_list')],
-                [sg.Text('Repositories')],
-                [
-                    widgets.RepoTable(
-                        values = [],
-                        width = 62,
-                        num_rows = 3,
-                        headings = ["test","test","test"],
-                        key='repo_table'
-                    )
-                ],
-            ]
-            ),
-            sg.Column( expand_y = True,
-                layout = [
-                    [sg.Text('Missing Tags:')],
-                    [sg.Listbox(
-                        values = [],
-                        size = (20,1),
-                        select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
-                        key = 'missing_tags_list',
-                        )],
-                    [sg.Column(
-                        layout=[[sg.Button('Create', key='missing_tags_button', enable_events=True)]],
-                         expand_x =True, pad=(0,0), vertical_alignment='bottom')
-                    ],
-                ]
-            ),
-           
-        ],
-            [sg.Text(f'Host: {self.api.base_url}')],
-            [sg.Multiline(key='console', size = (20,10))],
-        ]
-        """
         self.browse_paths = {k: None for k in ['image_list', 'file_list']}
 
     def get_queue(self):
@@ -225,7 +114,7 @@ class App():
         self.window['console'].print(*args, **kwargs)
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table', 'missing_tags_button']:
+        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table', 'missing_tags_button', 'license']:
             self.window[key].expand(expand_x = True)
         for key in ['queue', 'file_list', 'repo_table', 'image_list', 'missing_tags_list']:
             self.window[key].expand(expand_y = True)
@@ -246,13 +135,33 @@ class App():
         self.uploaded = False
         for key in ['name', 'desc', 'recording', 'new_tag', 'new_author']:
             self.window[key].update('')
-###        for key in ['tags', 'authors']:
-###            self.window[key].update('')
         self.window['date'].update('')
         for key in ['image_list', 'file_list', 'tags_list', 'authors_list']:
             self.window[key].update([])
         self.window['repo_table'].update(values = [])
         self.window['url_text'].update('')
+
+    def validate_recording(self):
+        path = self.window['recording'].get()
+        rec_valid = os.path.exists(path)
+        self.window['recording'].set_valid(rec_valid)
+
+    def validate_files(self, key):
+        elem = self.window[key]
+        values = elem.get_list_values()
+        
+        elem.set_valid(True)
+        for path in values:
+            if not os.path.exists(path):
+                elem.set_valid(False)
+
+    def validate_date(self):
+        elem = self.window['date']
+        try:
+            time.strptime(elem.get(), self.DATEFMT)
+            elem.set_valid(True)
+        except:
+            elem.set_valid(False)
 
     def update_form(self, upsel, force = False):
         if not force and upsel == self.upload_sel: return
@@ -267,6 +176,7 @@ class App():
                 res = res[0]
                 url_text = res['absolute_url']
                 self.uploaded = True
+        self.validate_recording()
 
         uploaded = self.uploaded
 
@@ -280,9 +190,14 @@ class App():
 
         self.window['date'].update(time.strftime(self.DATEFMT, time.localtime(up.data['date'])))
 
+        self.window['license'].update(self.api.licenses[up.data['license']], readonly=True)
+
         for key, src in [('image_list', 'images'),('file_list', 'attachments'),('tags_list', 'tags'),('authors_list', 'authors')]:
             print(key, src, up.data[src])
             self.window[key].update(up.data[src])
+
+        for key in ['image_list', 'file_list']:
+            self.validate_files(key)
 
         self.window['repo_table'].update_dict(values = up.data['repo_attachments'])
 
@@ -292,18 +207,23 @@ class App():
         else:
             self.window['url_text'].set_cursor(cursor='')
 
+
     def update_tags(self):
+        missing_list = self.window['missing_tags_list']
         if self.upload_sel == None:
-            self.window['missing_tags_list'].update([])
+            missing_list.update([])
+            missing_list.set_valid(True)
         up = self.queue[self.upload_sel]
         tags = up.data['tags']
         found, missing = self.api.get_tags(tags)
-        self.window['missing_tags_list'].update(missing)
+        missing_list.update(missing)
 
         if len(missing) != 0:
             self.window['upload_button'].update(disabled = True)
+            missing_list.set_valid(False)
         elif not self.uploaded:
             self.window['upload_button'].update(disabled = False)
+            missing_list.set_valid(True)
 
     def remove_bad_authors(self):
         auths = self.window['authors_list'].get_list_values()
@@ -325,10 +245,40 @@ class App():
             up.data['date'] = time.mktime(time.strptime(self.window['date'].get(), self.DATEFMT))
         except ValueError: pass
 
+        up.data['license'] = self.api.licenses_reverse[self.window['license'].get()]
+
         for key, src in [('image_list', 'images'),('file_list', 'attachments'),('tags_list', 'tags'),('authors_list', 'authors')]:
             up.data[src] = self.window[key].get_list_values()
 
         up.data['repo_attachments'] = self.window['repo_table'].get_upload_data()
+
+    def validate_upload(self):
+
+        up = self.queue[self.upload_sel]
+        if self.uploaded: return False
+
+        result = True
+
+        for key, elem in self.window.key_dict.items():
+            try:
+                if not elem.valid:
+                    self.print(f'{key} data is not valid')
+                    result = False
+            except: pass
+
+        return result
+
+    def do_upload(self):
+        if self.upload_sel == None: return
+        valid = self.validate_upload()
+        if not valid: return
+    
+        self.update_upload(self.upload_sel)
+        data = self.queue[self.upload_sel].data
+        up = uploader.Uploader(self.api.base_url, data, self.auth, tag_resolution='ignore')
+        res = up.upload(dry=True)
+
+
 
     def create_tags(self):
         new_tags = []
@@ -361,6 +311,8 @@ class App():
                 self.print(f'Created new tag {obj["name"]}')
             else:
                 self.print(f'Failed to create tag, {status} :{obj}')
+        
+
 
     def run(self):
         print(f'Starting app')
@@ -369,7 +321,7 @@ class App():
 
         for key in ['image_list', 'file_list', 'repo_table', 'tags_list', 'authors_list']:
             self.window[key].setup()
-
+        
         self.update_queuebox()
         self.expand_ui()
         self.clear_form()
@@ -393,6 +345,8 @@ class App():
             elif event == 'refresh_queue':
                 self.get_queue()
                 self.update_queuebox()
+            elif event == 'upload_button':
+                self.do_upload()
             elif event == 'delete_button':
                 self.delete_upload()
             elif event == 'revert_button':
@@ -416,6 +370,13 @@ class App():
                     webbrowser.open(self.window['url_text'].get(), new=2)
             elif event == 'missing_tags_button':
                 self.create_tags() 
+
+            self.validate_recording()
+
+            if event in ['image_list', 'file_list']:
+                self.validate_files(event)
+            if event == 'date':
+                self.validate_date()
 
             if event in ['queue', 'tags_list', 'missing_tags_button']:
                 self.update_tags()

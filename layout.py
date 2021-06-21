@@ -34,14 +34,17 @@ class Layout():
         return result
 
     def get_form(self):
+        license_values = list(self.app.api.licenses.values())
         result = sg.Column( expand_y = True,
             layout=[ 
                 [sg.Text('Title:')], 
-                [sg.Input(key = 'name', enable_events=True, metadata=self.meta_lock_uploaded)],
+                [widgets.VInput(key = 'name', enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Text('Recording:')], 
-                [sg.Input(key = 'recording'), sg.FileBrowse('Browse', key='recording_browse', enable_events=True, metadata=self.meta_lock_uploaded)],
+                [   widgets.VInput(key = 'recording', metadata=self.meta_lock_uploaded), 
+                    sg.FileBrowse('Browse', key='recording_browse', 
+                        enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Text('Time:')], 
-                [sg.Input(key = 'date', enable_events=True, metadata=self.meta_lock_uploaded)],
+                [widgets.VInput(key = 'date', enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Text('Description:')], 
                 [sg.Multiline(key = 'desc', expand_x = True, size=(0,5), enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Column( expand_x = True, expand_y = True, pad=(0,0), layout=[
@@ -56,7 +59,7 @@ class Layout():
                             metadata=self.meta_lock_uploaded 
                             )
                     ],
-                    [   sg.Input(key='new_tag', size=(1,1), metadata=self.meta_lock_uploaded), 
+                    [   widgets.VInput(key='new_tag', size=(1,1), metadata=self.meta_lock_uploaded), 
                         sg.Button('Add', key = 'tags_list+listbox_add+new_tag', 
                             enable_events=True, metadata=self.meta_lock_uploaded)]
                     ]),
@@ -72,11 +75,19 @@ class Layout():
                             metadata=self.meta_lock_uploaded
                             )
                     ],
-                    [   sg.Input(key='new_author', size=(1,1), metadata=self.meta_lock_uploaded), 
+                    [   widgets.VInput(key='new_author', size=(1,1), metadata=self.meta_lock_uploaded), 
                         sg.Button('Add', key = 'authors_list+listbox_add+new_author', 
                             enable_events=True, metadata=self.meta_lock_uploaded)]
                     ])
                 ],
+                [sg.Text('License:')],
+                [sg.Combo(
+                    values = license_values,
+                    default_value = self.app.api.licenses[8],
+                    readonly=True,
+                    key = 'license',
+                    metadata=self.meta_lock_uploaded
+                    )],
                 [   sg.Text('Upload URL:'), 
                     sg.Text('', key='url_text', enable_events=True, auto_size_text=True, size=(len(self.app.upload_url)+20,1), text_color = 'blue'),],
  
@@ -130,7 +141,7 @@ class Layout():
         result = sg.Column( expand_y = True,
             layout = [
                 [sg.Text('Missing Tags:')],
-                [sg.Listbox(
+                [widgets.ValidListbox(
                     values = [],
                     size = (20,1),
                     select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
