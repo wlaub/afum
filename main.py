@@ -397,7 +397,7 @@ class App():
             elif event == 'missing_tags_button':
                 self.create_tags() 
 
-            if event == 'recording':
+            if event in ['recording', 'queue']:
                 self.validate_recording()
 
             if event in ['image_list', 'file_list']:
