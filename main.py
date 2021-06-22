@@ -4,6 +4,7 @@ import math
 
 import shutil
 import datetime
+import threading
 
 import webbrowser
 
@@ -18,8 +19,11 @@ import audio_metadata as audiometa
 import PySimpleGUI as sg
 import tkinter as tk
 
+import pydub
+
 import widgets
 import layout
+import audio
 
 up = upload.Upload(config.UPLOAD_DIR, 'delete_me')
 
@@ -48,6 +52,12 @@ class App():
 
         self.get_queue()
         self.upload_sel = None
+        
+        self.audio = audio.AudioManager()
+
+        self.audio_lock = threading.Lock()
+        self.audio_thread_exit = threading.Event()
+        self.audio_thread = threading.Thread(target = self.audio_status)
 
         self.api = TTTAPI(self.upload_url, auth)
         self.uploaded = False
@@ -56,6 +66,19 @@ class App():
         self.layout = layout.Layout(self).get_layout()
 
         self.browse_paths = {k: None for k in ['image_list', 'file_list']}
+
+    def set_pos(self, value):
+        if self.audio_thread_exit.is_set(): return
+        with self.audio_lock:
+            if value != self.window['playback_progress'].Widget.get():
+                self.window['playback_progress'].update(value)
+
+    def audio_status(self):
+        while not self.audio_thread_exit.is_set():
+            time.sleep(1)
+            pos = self.audio.get_pos()
+            self.set_pos(pos)
+            self.window['play'].set_playing(self.audio.is_playing)
 
     def get_queue(self):
         self.queue = {}
@@ -117,7 +140,7 @@ class App():
         self.window['console'].print(*args, **kwargs)
 
     def expand_ui(self):
-        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table', 'missing_tags_button', 'license']:
+        for key in ['name', 'recording', 'date', 'desc', 'refresh_queue', 'console', 'new_tag', 'tags_list', 'authors_list', 'new_author', 'repo_table', 'missing_tags_button', 'license' ,'playback_progress']:
             self.window[key].expand(expand_x = True)
         for key in ['queue', 'file_list', 'repo_table', 'image_list', 'missing_tags_list']:
             self.window[key].expand(expand_y = True)
@@ -152,12 +175,18 @@ class App():
         if rec_valid:
             try:
                 data = audiometa.load(path)
-                length = data['streaminfo']['duration']
+                length = round(data['streaminfo']['duration'])
+                self.window['playback_progress'].update(range=(0,length))
                 duration = datetime.timedelta(seconds=round(length))
                 infostring = f'Length: {duration}'
+                self.audio.load(path)
+                self.window['play'].set_playing(self.audio.is_playing)
             except audiometa.exceptions.UnsupportedFormat:
                 rec_valid = False
                 infostring = 'Not a valid audio file'
+
+        if not rec_valid:
+            self.audio.clear()
 
         self.window['audiometa'].update(infostring)
 
@@ -351,6 +380,7 @@ class App():
         self.update_queuebox()
         self.expand_ui()
         self.clear_form()
+        self.audio_thread.start()
         print(f'App started')
         while True:
             event, values = window.read()
@@ -400,6 +430,15 @@ class App():
             if event in ['recording', 'queue']:
                 self.validate_recording()
 
+            if event == 'playback_progress':
+                with self.audio_lock:
+                    res = self.window['playback_progress'].Widget.get()
+                    self.audio.set_pos(res)
+
+            if event == 'play':
+                self.audio.toggle_play()
+                self.window['play'].set_playing(self.audio.is_playing)
+
             if event in ['image_list', 'file_list']:
                 self.validate_files(event)
             if event == 'date':
@@ -411,6 +450,10 @@ class App():
                 self.remove_bad_authors()
                 
         print(f'Ending app')
+        self.audio_thread_exit.set()
+        self.audio_thread.join()
+        print(f'Audio thread closed')
+        
         window.close()
 
 sg.theme('SystemDefault 1')

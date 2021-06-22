@@ -24,6 +24,29 @@ def popup_new_tag(tagname):
 
     return event, {'name': tagname, 'description': description}
 
+
+class PlayButton(sg.Button):
+    chars = {
+        'play': '\u25b6',
+        'pause': '\u25a0',
+        'stop': '\u25a0'
+        }
+    
+    def __init__(self, **kwargs):
+        kwargs['button_text'] = self.chars['play']
+        super().__init__(**kwargs)
+
+    def pause(self):
+        self.update(text=self.chars['play'])
+    def play(self):
+        self.update(text=self.chars['pause'])
+
+    def set_playing(self, is_playing):
+        if is_playing:
+            self.play()
+        else:
+            self.pause()
+
 class ValidMixin():
 
     def set_valid(self, valid):

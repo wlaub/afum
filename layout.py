@@ -43,6 +43,14 @@ class Layout():
                 [   widgets.VInput(key = 'recording', metadata=self.meta_lock_uploaded, enable_events=True), 
                     sg.FileBrowse('Browse', key='recording_browse', 
                         enable_events=True, metadata=self.meta_lock_uploaded)],
+                [sg.Slider(
+                        range = (0,1), default_value = 0, 
+                        orientation='h', key='playback_progress',
+                        disable_number_display = True,
+                        enable_events = True,
+                        ),
+                    widgets.PlayButton( key='play', enable_events=True)
+                    ],
                 [sg.Text('Time:')], 
                 [widgets.VInput(key = 'date', enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Text('Description:')], 
