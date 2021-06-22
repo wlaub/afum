@@ -19,8 +19,6 @@ import audio_metadata as audiometa
 import PySimpleGUI as sg
 import tkinter as tk
 
-import pydub
-
 import widgets
 import layout
 import audio
@@ -371,7 +369,8 @@ class App():
 
     def run(self):
         print(f'Starting app')
-        self.window = window = sg.Window("AFUM", self.layout,)
+
+        self.window = window = sg.Window("AFUM", self.layout, location=(0,0))
         self.window.Finalize()
 
         for key in ['image_list', 'file_list', 'repo_table', 'tags_list', 'authors_list']:
