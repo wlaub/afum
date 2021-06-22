@@ -75,7 +75,7 @@ class Upload():
             self.load()
 
     def get_filename(self):
-        return os.path.join(self.directory, f'{self.name}.json')
+        return os.path.join(self.directory, f'data.json')
 
     def add_file_generic(self, path, cachedir, filelist, cache):
         """
