@@ -3,6 +3,7 @@ import time
 import math
 
 import shutil
+import datetime
 
 import webbrowser
 
@@ -11,6 +12,8 @@ import config
 from tttweb.uploader.tttapi import TTTAPI
 from tttweb.uploader import uploader
 import secrets
+
+import audio_metadata as audiometa
 
 import PySimpleGUI as sg
 import tkinter as tk
@@ -144,6 +147,20 @@ class App():
     def validate_recording(self):
         path = self.window['recording'].get()
         rec_valid = os.path.exists(path)
+
+        infostring = ''
+        if rec_valid:
+            try:
+                data = audiometa.load(path)
+                length = data['streaminfo']['duration']
+                duration = datetime.timedelta(seconds=round(length))
+                infostring = f'Length: {duration}'
+            except audiometa.exceptions.UnsupportedFormat:
+                rec_valid = False
+                infostring = 'Not a valid audio file'
+
+        self.window['audiometa'].update(infostring)
+
         self.window['recording'].set_valid(rec_valid)
 
     def validate_files(self, key):
@@ -272,6 +289,8 @@ class App():
         if self.upload_sel == None: return
         valid = self.validate_upload()
         if not valid: return
+
+        self.print(f'Starting upload...')
     
         self.update_upload(self.upload_sel)
         data = self.queue[self.upload_sel].data
@@ -378,7 +397,8 @@ class App():
             elif event == 'missing_tags_button':
                 self.create_tags() 
 
-            self.validate_recording()
+            if event == 'recording':
+                self.validate_recording()
 
             if event in ['image_list', 'file_list']:
                 self.validate_files(event)

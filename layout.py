@@ -39,8 +39,8 @@ class Layout():
             layout=[ 
                 [sg.Text('Title:')], 
                 [widgets.VInput(key = 'name', enable_events=True, metadata=self.meta_lock_uploaded)],
-                [sg.Text('Recording:')], 
-                [   widgets.VInput(key = 'recording', metadata=self.meta_lock_uploaded), 
+                [sg.Text('Recording:'), sg.Text('', s=(50,1), key='audiometa')], 
+                [   widgets.VInput(key = 'recording', metadata=self.meta_lock_uploaded, enable_events=True), 
                     sg.FileBrowse('Browse', key='recording_browse', 
                         enable_events=True, metadata=self.meta_lock_uploaded)],
                 [sg.Text('Time:')], 
