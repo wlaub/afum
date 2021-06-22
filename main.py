@@ -276,8 +276,15 @@ class App():
         self.update_upload(self.upload_sel)
         data = self.queue[self.upload_sel].data
         up = uploader.Uploader(self.api.base_url, data, self.auth, tag_resolution='ignore')
-        res = up.upload(dry=True)
+        res = up.upload(dry=self.dry)
 
+        if res.status_code > 299:
+            self.print(f'Failed to upload file')
+            self.print(f'{res.status_code}: {res.text}')
+        else:
+            self.print(f'File upload success')    
+    
+        self.update_form(self.upload_sel, force=True)
 
 
     def create_tags(self):
