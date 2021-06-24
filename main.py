@@ -18,6 +18,7 @@ import audio_metadata as audiometa
 
 import PySimpleGUI as sg
 import tkinter as tk
+import tkfilebrowser as tkfb
 
 import widgets
 import layout
@@ -74,6 +75,7 @@ class App():
     def audio_status(self):
         while not self.audio_thread_exit.is_set():
             time.sleep(1)
+            print('Beep')
             pos = self.audio.get_pos()
             self.set_pos(pos)
             self.window['play'].set_playing(self.audio.is_playing)
@@ -150,7 +152,8 @@ class App():
                 elem.update(disabled = locked)
 
     def add_files(self, key):
-        files = sg.tk.filedialog.askopenfilenames(initialdir = self.browse_paths[key], parent=self.window.TKroot)
+#        files = sg.tk.filedialog.askopenfilenames(initialdir = self.browse_paths[key], parent=self.window.TKroot)
+        files = tkfb.askopenfilenames(initialdir = self.browse_paths[key], parent=self.window.TKroot)
         if len(files) == 0: return
         self.window[key].add_items_unique(files)
         self.browse_paths[key] = os.path.dirname(files[0])
