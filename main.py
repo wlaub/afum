@@ -71,14 +71,13 @@ class App():
         with self.audio_lock:
             if value != self.window['playback_progress'].Widget.get():
                 self.window['playback_progress'].update(value)
+            self.window['play'].set_playing(self.audio.is_playing)
 
     def audio_status(self):
         while not self.audio_thread_exit.is_set():
-            time.sleep(1)
-            print('Beep')
+            time.sleep(0.2)
             pos = self.audio.get_pos()
             self.set_pos(pos)
-            self.window['play'].set_playing(self.audio.is_playing)
 
     def get_queue(self):
         self.queue = {}
@@ -373,7 +372,9 @@ class App():
     def run(self):
         print(f'Starting app')
 
-        self.window = window = sg.Window("AFUM", self.layout, location=(0,0))
+        self.window = window = sg.Window("AFUM", self.layout, location=(0,0), 
+#            use_ttk_buttons=True
+            )
         self.window.Finalize()
 
         for key in ['image_list', 'file_list', 'repo_table', 'tags_list', 'authors_list']:
