@@ -54,7 +54,6 @@ class App():
         
         self.audio = audio.AudioManager()
 
-        self.audio_lock = threading.Lock()
         self.audio_thread_exit = threading.Event()
         self.audio_thread = threading.Thread(target = self.audio_status)
 
@@ -68,16 +67,15 @@ class App():
 
     def set_pos(self, value):
         if self.audio_thread_exit.is_set(): return
-        with self.audio_lock:
-            if value != self.window['playback_progress'].Widget.get():
-                self.window['playback_progress'].update(value)
-            self.window['play'].set_playing(self.audio.is_playing)
+        if value != self.window['playback_progress'].Widget.get():
+            self.window['playback_progress'].update(value)
+        self.window['play'].set_playing(self.audio.is_playing)
 
     def audio_status(self):
         while not self.audio_thread_exit.is_set():
-            time.sleep(0.2)
             pos = self.audio.get_pos()
-            self.set_pos(pos)
+            self.window.write_event_value('audio_tick', pos)
+            time.sleep(.2)
 
     def get_queue(self):
         self.queue = {}
@@ -434,9 +432,11 @@ class App():
                 self.validate_recording()
 
             if event == 'playback_progress':
-                with self.audio_lock:
-                    res = self.window['playback_progress'].Widget.get()
-                    self.audio.set_pos(res)
+                res = self.window['playback_progress'].Widget.get()
+                self.audio.set_pos(res)
+
+            if event == 'audio_tick':
+                self.set_pos(values['audio_tick'])
 
             if event == 'play':
                 self.audio.toggle_play()
