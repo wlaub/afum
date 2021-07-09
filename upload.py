@@ -4,6 +4,8 @@ import json
 
 import shutil
 
+import git
+
 class Upload():
     """
     Upload has the directory structure:
@@ -88,17 +90,54 @@ class Upload():
         if not cache:
             if path in filelist: return
             filelist.append(path)
+            return path
         else:
             newpath = os.path.join(cachedir, filename)
             if newpath in filelist: return
             shutil.copyfile(path, newpath)
             filelist.append(newpath)
+            return newpath
+
+    def set_recording(self, path, cache=False):
+        """
+        Set the recording to the given file, and cache it locally if cache
+        is True
+        """
+        newpath = self.add_file_generic(path, self.directory, [], cache)
+        self.data['recording'] = newpath
     
     def add_file(self, path, cache=False):
-        return self.add_file_generic(path, self.filedir, self.attachments, cache)
+        return self.add_file_generic(path, self.filedir, self.data['attachments'], cache)
 
     def add_image(self, path, cache=False):
-        return self.add_file_generic(path, self.imagedir, self.images, cache)
+        return self.add_file_generic(path, self.imagedir, self.data['images'], cache)
+
+    def add_git(self, path):
+        """
+        Extract the relevant git metadata and add a repo attachment representing
+        the given path.
+        """
+        basename, filename = os.path.split(path)
+        repo = git.Repo(basename)
+        remote = repo.remote().url
+        relpath = os.path.relpath(path, repo.working_dir)
+
+        base_commit = repo.head.commit
+        commit = base_commit.hexsha
+        for tag in repo.tags:
+            if tag.commit == base_commit:
+                commit = tag.name
+                break
+
+        commit_data = {
+            'repo': remote,
+            'filename': relpath,
+            'commit': commit
+        }
+        
+        if not commit_data in self.data['repo_attachments']:
+            self.data['repo_attachments'].append(commit_data)
+
 
     def load(self):
         filename = self.get_filename()
@@ -110,14 +149,19 @@ class Upload():
         raw = open(filename, 'r').read()
         self.data = json.loads(raw)
 
-    def save(self):
-        filename = self.get_filename()
-
-        if not os.path.exists(self.directory):
+    def prepare(self):
+         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
             os.makedirs(self.filedir)
             os.makedirs(self.imagedir)
 
+    def save(self, write_orig = False):
+        filename = self.get_filename()
+        orig_filename = self.get_filename()+'.orig'
+
+        self.prepare()
+
+        if write_orig or not os.path.exists(orig_filename):
             json.dump(self.data, open(f'{filename}.orig', 'w'))
        
         json.dump(self.data, open(filename, 'w'))

@@ -1,11 +1,16 @@
 import os, sys
 import time
 
+import json
 from enum import Enum
 
 import watchdog.events
 import watchdog.observers
+import git
 
+from dateutil.parser import parse as date_parse
+
+import upload
 import config
 
 
@@ -20,6 +25,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
     pending_exts = ['.pcm'];
     complete_exts = ['.wav', '.mp3', '.ogg']
 
+    loud = False
+
     def __init__(self, patch_dir):
         super().__init__()
 
@@ -28,8 +35,7 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         self.recording_base = None    
         self.recording_path = None
 
-        self.find_patch('')
-
+        self.patch_repo = git.Repo(config.VCV_PATCH_DIR)
 
     def find_patch(self, path):
         """
@@ -55,24 +61,131 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
         return filename
 
-    def start_watching(self, path):
-        self.recording_path = path
-        self.recording_base, _ = os.path.splitext(path)
-        self.state = State.RECORDING
+    def get_commit_tag(self, uptime):
+        prefix = 'AUTO'
+        tname = time.strftime('%Y%m%d%H%M%S', time.localtime(uptime))
+        name = f'{prefix}_{tname}'
+        tags = [x.name for x in self.patch_repo.tags]
+        hits = list(filter(lambda x: x.startswith(name), tags))
+        if len(hits) == 0: return name
+        idx = 1
+        while f'{name}_{idx}' in hits:
+            idx += 1
+ 
+        newname = f'{name}_{idx}'
 
-        patchname = self.find_patch(path)
+        print(f'Warning: commit tag {name} already exists. Using {newname}')
+        return newname
 
-        #Save the time
+
+    def start_watching(self, newpath):
+        self.start_time = time.time()
+
+        recording_path = newpath
+        recording_base, _ = os.path.splitext(newpath)
+        recording_dir, recording_filename = os.path.split(newpath)
+
+        self.patch_path = self.find_patch(newpath)
+        print(f'Using patch file {self.patch_path}')
+        patchdata = json.load(open(self.patch_path, 'r'))
+        modules = patchdata['modules']
+        metafiles = list(filter(lambda x: x['model'] == 'MetadataFiles', modules))
+        metamains = list(filter(lambda x: x['model'] == 'MetadataMain', modules))
+        if len(metamains) == 0:
+            print(f'Error: No MetadataMain instance detected. Ignoring recording.')
+            return
+
+        metamain = metamains[0]
+        if len(metamains) > 1:
+            print(f'Warning: patch contains multiple MetadataMain instances. Using:')
+            print(metamain)
+
+        uname = time.strftime('%Y-%m-%d_%H%M%S', time.localtime(self.start_time))
+        self.upload = upload.Upload(config.VCV_TEMP_DIR, uname)
+
+        self.upload.prepare()
+
+        #Load main metadata
+
+        self.upload.data['desc'] = metamain['description']
+        time_source = metamain['time_source']
+        if time_source == 'trigger':
+            uptime = metamain['trigger_time']
+        elif time_source == 'override':
+            uptime = date_parse(metamain['override_time']).timestamp()
+        elif time_source == 'file':
+            uptime = int(os.path.getctime(newpath))
+        elif time_source == 'error':
+            print(f'Warning: metadata time source was error. Defaulting to file creation time.')
+            uptime = int(os.path.getctime(newpath))
+        else:
+            print(f'Warning: metadata time source {time_source} not recognized. Defaulting to file creation time.')
+            uptime = int(os.path.getctime(newpath))
+
+        self.upload.data['date'] = uptime
+
+        #There's nothing for setting this in the module, but it will always be CC0
+        self.upload.data['license'] = 8
+
+        def split_tags(text):
+            res = text.split(',')
+            res = [x.strip() for x in res]
+            return res
+
+        self.upload.data['tags'] = split_tags(metamain['tags'])
+        self.upload.data['authors'] = split_tags(metamain['authors'])
+
+        #Commit and tag the patch file
+        #Doing this before loading files metadata to ensure that other patch repo
+        #Files all share the same commit, the patch file comes first
+        commit_tag = self.get_commit_tag(self.upload.data['date'])
+        
+        index = self.patch_repo.index
+        index.add([self.patch_path])
+        newcommit = index.commit(f'Automated commit generated for pending recording file {recording_filename}')
+        newtag = self.patch_repo.create_tag(commit_tag)
+
+        self.upload.add_git(self.patch_path)
+
+        #Load files metadata
+
+        for fileinfo in metafiles:
+            file_type = fileinfo['file_type']
+            file_paths = fileinfo['files'].strip().split('\n')
+            if file_type == 'file':
+               for path in file_paths:
+                   self.upload.add_file(path, cache=True) 
+            elif file_type == 'image':
+               for path in file_paths:
+                   self.upload.add_image(path, cache=True) 
+            elif file_type == 'git':
+               for path in file_paths:
+                   self.upload.add_git(path) 
+ 
         #Commit patch repo
         #Identify the patch and extract metadatas
         #Create file upload object
         #Copy attachments to intermediate location
 
-        print(f'Started watching pending recording: {self.recording_path}')
-        print(f'Using patch file {patchname}')
+        
 
-    def finish_watching(self, path):
-        print(f'Detected completed recording: {path}')
+        self.recording_path = recording_path
+        self.recording_base = recording_base
+
+        self.state = State.RECORDING
+
+        print(f'Started watching pending recording: {self.recording_path}')
+
+
+    def finish_watching(self, newpath):
+        print(f'Detected completed recording: {newpath}')
+        path_base, filename = os.path.splitext(newpath)
+
+        self.upload.data['name'] = filename
+        self.upload.set_recording(newpath, cache=True)
+
+        self.upload.save(write_orig = True)
+ 
         #Check recording length
         #Push repos
         #Finalize upload object and copy temp folder over to uploads directory
@@ -89,7 +202,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
     def on_created(self, event):
         super().on_created(event)
-        print(f'Event: {event}')
+        if self.loud:
+            print(f'Event: {event}')
 
         path = event.src_path
         base, ext = os.path.splitext(path)
@@ -105,21 +219,19 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
     def on_deleted(self, event):
         super().on_deleted(event)
-        print(f'Event: {event}')
+        if self.loud:
+            print(f'Event: {event}')
 
         if self.state == State.RECORDING:
-            path = event.src_path()
+            path = event.src_path
             if path == self.recording_path:
+                print(f'Warning: pending recording {path} vanished without creating a recognized recording file.')
                 self.state = State.FINALIZING
 
 
-
-rec_path = '/media/wlaub/Archive/Patches'
-patch_dir = '/home/wlaub/.Rack/patches'
-
-handler = EventHandler(patch_dir)
+handler = EventHandler(config.VCV_PATCH_DIR)
 obs = watchdog.observers.Observer()
-obs.schedule(handler, rec_path)
+obs.schedule(handler, config.VCV_RECORD_DIR)
 
 obs.start()
 
