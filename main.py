@@ -75,7 +75,7 @@ class App():
         while not self.audio_thread_exit.is_set():
             pos = self.audio.get_pos()
             self.window.write_event_value('audio_tick', pos)
-            self.audio_thread_exit.wait(5)
+            self.audio_thread_exit.wait(.5)
 
     def get_queue(self):
         self.queue = {}
