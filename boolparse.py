@@ -1,18 +1,16 @@
 """
 Modified version of 
 https://github.com/bastikr/boolean.py/blob/master/boolean/boolean.py#L116
-To use different sets of logic symbols
-It's just a copy paste of the defualt tokenize implementation with the TOKENS
-dictionary moved out of the body of the function so that it can be changed.
 
-Since this is used for parsing combinations of tags, there is some need to
-restrict the set of operator strings to minimize risk of confusion with
-legitimate tag names.
+TagAlgebra takes a list of tags in its constructor and then evaluates
+expressions according to the presence of tags in the list. That is, all
+non-operator symbols in a parsed expression are replaced by True if they are
+present in the list and False if they are not.
 
-edit: mostly rewrote the tokenize function because it wasn't working with my new
-tokens, and i didn't know why
-
-edit2: okay I just went ahead and made it handle all of the checking for of tags
+The TOKENS dictionary has been moved out of the tokenize function so that it
+can be replaced at runtime, and the default dictionary has been changed to
+reduce the likelihood of confusion with tag names, which may contain almost
+any character.
 
 Copyright (c) 2009-2020 Sebastian Kraemer, basti.kr@gmail.com and others
 All rights reserved.

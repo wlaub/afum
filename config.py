@@ -14,7 +14,7 @@ VCV_RECORD_DIR = '/media/wlaub/Archive/Patches'
 #Where to store upload packages during recording
 VCV_TEMP_DIR = os.path.expanduser('~/projects/afum/temp_uploads')
 #Minimum length in seconds of a recording. Discard anything longer
-VCV_MIN_LENGTH = 10
+VCV_MIN_LENGTH = 7
 
 #Automatically include images when the corresponding tags are presenti
 #Boolean expressions maybe be used with &&, ||, ~~, and {,}

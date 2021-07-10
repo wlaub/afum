@@ -66,15 +66,18 @@ class Upload():
             'repo_attachments': [],
             'license': 8,
             }
-        self.basedir = basedir
         self.name = name
-        self.directory = os.path.join(basedir, name)
+        self.set_basedir(basedir)
 
         self.filedir = os.path.join(self.directory, self._FILEDIR)
         self.imagedir = os.path.join(self.directory, self._IMAGEDIR)
 
         if os.path.exists(self.directory):
             self.load()
+
+    def set_basedir(self, basedir):
+        self.basedir = basedir
+        self.directory = os.path.join(basedir, self.name)
 
     def get_filename(self):
         return os.path.join(self.directory, f'data.json')
@@ -141,6 +144,29 @@ class Upload():
         
         if not commit_data in self.data['repo_attachments']:
             self.data['repo_attachments'].append(commit_data)
+
+    def move(self, newdir):
+        """
+        Moving entails updating the paths of any cached files to point at the
+        new location.
+        """
+        newpath = shutil.move(self.directory, newdir)
+
+        def replace(name):
+            if not self.directory in name: return name
+            relpath = os.path.relpath(name, self.basedir)
+            return os.path.join(newdir, relpath)
+
+        for key in ['attachments', 'images']:
+            self.data[key] = list(map(replace, self.data[key]))
+
+        self.data['recording'] = replace(self.data['recording'])
+
+        self.directory = newpath
+
+        self.save(write_orig = True)
+            
+        return newpath
 
 
     def load(self):

@@ -3,12 +3,16 @@ import time
 
 import json
 from enum import Enum
+import datetime
+import shutil
 
 import watchdog.events
 import watchdog.observers
 import git
 
 from dateutil.parser import parse as date_parse
+
+import audio_metadata as audiometa
 
 import upload
 import config
@@ -26,15 +30,13 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
     pending_exts = ['.pcm'];
     complete_exts = ['.wav', '.mp3', '.ogg']
 
-    loud = False
+    loud = True
 
     def __init__(self, patch_dir):
         super().__init__()
 
         self.patch_dir = patch_dir
-        self.state = State.IDLE
-        self.recording_base = None    
-        self.recording_path = None
+        self.clear()
 
         self.patch_repo = git.Repo(config.VCV_PATCH_DIR)
 
@@ -81,6 +83,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
     def start_watching(self, newpath):
         self.start_time = time.time()
+
+        time.sleep(0.5) #give things time to settle
 
         recording_path = newpath
         recording_base, _ = os.path.splitext(newpath)
@@ -145,8 +149,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         
         index = self.patch_repo.index
         index.add([self.patch_path])
-        newcommit = index.commit(f'Automated commit generated for pending recording file {recording_filename}')
-        newtag = self.patch_repo.create_tag(commit_tag)
+        self.newcommit = index.commit(f'Automated commit generated for pending recording file {recording_filename}')
+        self.newtag = self.patch_repo.create_tag(commit_tag)
 
         self.upload.add_git(self.patch_path)
 
@@ -185,29 +189,60 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
         print(f'Started watching pending recording: {self.recording_path}')
 
+    def validate(self, newpath):
+        try:
+            metadata = audiometa.load(newpath)
+            duration = metadata['streaminfo']['duration']
+            if duration < config.VCV_MIN_LENGTH:
+                print(f'Duration {duration:.1f} < {config.VCV_MIN_LENGTH} s for recording {newpath}. Not adding to queue.')
+                return False
+        except Exception as e:
+            print(f'Failed to validate recording due to an exception: {e}')
+            return False
+        return True
 
     def finish_watching(self, newpath):
         print(f'Detected completed recording: {newpath}')
-        path_base, filename = os.path.splitext(newpath)
+        path_base, filename = os.path.split(newpath)
+
+        time.sleep(0.5) #it needs some time to settle after being created
 
         self.upload.data['name'] = filename
         self.upload.set_recording(newpath, cache=True)
 
         self.upload.save(write_orig = True)
- 
-        #Check recording length
-        #Push repos
-        #Finalize upload object and copy temp folder over to uploads directory
-        #Delete temp folder
-        self.state = State.IDLE
-        self.recording_base = None    
-        self.recording_path = None
+
+        #Validate the recording file
+        if self.validate(self.upload.data['recording']):
+            print(f'Moving upload package')
+            new_dir = self.upload.move(config.UPLOAD_DIR)
+            print(f'Pushing patches repository')
+            try:
+                origin = self.patch_repo.remote()
+                origin.push()
+                origin.push(self.newtag)
+            except Exception as e:
+                print(f'Error: Failed to push patches repo: {e}')        
+            else:
+                print(f'Finished generating upload package at {new_dir}') 
+            #Push the patches repo
+
+        print(f'Finished processing new recording {filename}')
+            
+        self.clear() 
 
     def abort_watching(self, path):
         #undo commit
+        self.clear()
+
+    def clear(self):
         self.state = State.IDLE
         self.recording_base = None    
         self.recording_path = None
+        self.newcommit = None
+        self.newtag = None
+        self.upload = None
+       
 
     def on_created(self, event):
         super().on_created(event)
@@ -219,7 +254,10 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         
         if self.state in [State.IDLE, State.FINALIZING]:
             if ext in self.pending_exts:
-                self.start_watching(path)
+                try:
+                    self.start_watching(path)
+                except Exception as e:
+                    print(f'Error: Failed to start watching because {e}')
         elif self.state in [State.RECORDING, State.FINALIZING]:
             if base == self.recording_base:
                 self.finish_watching(path)
