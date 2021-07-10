@@ -79,6 +79,10 @@ class Upload():
     def get_filename(self):
         return os.path.join(self.directory, f'data.json')
 
+    def add_tag(self, tag):
+        if not tag in self.data['tags']:
+            self.data['tags'].append(tag)
+
     def add_file_generic(self, path, cachedir, filelist, cache):
         """
         Add the given file to the given filelist without

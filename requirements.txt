@@ -4,6 +4,7 @@ audio-metadata==0.11.1
 Babel==2.9.1
 bidict==0.21.2
 bitstruct==8.11.1
+boolean.py==3.8
 certifi==2021.5.30
 chardet==4.0.0
 Django==3.2.4

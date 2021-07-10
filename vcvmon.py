@@ -13,6 +13,7 @@ from dateutil.parser import parse as date_parse
 import upload
 import config
 
+import boolparse
 
 class State(Enum):
     IDLE=1
@@ -135,6 +136,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         self.upload.data['tags'] = split_tags(metamain['tags'])
         self.upload.data['authors'] = split_tags(metamain['authors'])
 
+        self.upload.add_tag('vcv rack')
+
         #Commit and tag the patch file
         #Doing this before loading files metadata to ensure that other patch repo
         #Files all share the same commit, the patch file comes first
@@ -161,13 +164,19 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             elif file_type == 'git':
                for path in file_paths:
                    self.upload.add_git(path) 
+
+        #Add tag-associated images
+        tagparse = boolparse.TagAlgebra(self.upload.data['tags'])
+        for expr, images in config.VCV_TAG_IMAGES.items():
+            if tagparse.parse(expr, True):
+                print(f'Automatically adding images for {expr}')
+                for image in images:
+                    self.upload.add_image(image, cache=True)
  
         #Commit patch repo
         #Identify the patch and extract metadatas
         #Create file upload object
         #Copy attachments to intermediate location
-
-        
 
         self.recording_path = recording_path
         self.recording_base = recording_base

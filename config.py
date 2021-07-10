@@ -16,5 +16,13 @@ VCV_TEMP_DIR = os.path.expanduser('~/projects/afum/temp_uploads')
 #Minimum length in seconds of a recording. Discard anything longer
 VCV_MIN_LENGTH = 10
 
-
+#Automatically include images when the corresponding tags are presenti
+#Boolean expressions maybe be used with &&, ||, ~~, and {,}
+#This means that tags containing those strings may not be used
+imgdir = os.path.expanduser('~/projects/afum/images')
+VCV_TAG_IMAGES = {
+'bldng': [os.path.join(imgdir, 'bldng1.png')],
+'prometheus II && demo': [os.path.join(imgdir, 'prom2_rev01_dev.jpg')],
+'prometheus II': [os.path.join(imgdir, 'prom2_rev01_demo.jpg')],
+}
 
