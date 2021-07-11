@@ -12,6 +12,8 @@ import git
 
 from dateutil.parser import parse as date_parse
 
+import psutil
+
 import audio_metadata as audiometa
 
 import upload
@@ -159,6 +161,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         for fileinfo in metafiles:
             file_type = fileinfo['file_type']
             file_paths = fileinfo['files'].strip().split('\n')
+            file_paths = map(lambda x: x.strip(), file_paths)
+            file_paths = list(filter(lambda x: len(x) > 0, file_paths))
             if file_type == 'file':
                for path in file_paths:
                    self.upload.add_file(path, cache=True) 
@@ -201,11 +205,27 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             return False
         return True
 
+    def wait_for_file(self, path):
+        """
+        Wait until there are no other processes touching a file.
+        """
+        delay = 0.25
+
+        print(f'Waiting for file size to stop changing')
+        last_size = os.path.getsize(path)
+        time.sleep(delay)
+        while os.path.getsize(path) != last_size:
+            last_size = os.path.getsize(path)
+            print(f'  ... {last_size}')
+            time.sleep(delay)
+        print(f'Finished waiting')
+
     def finish_watching(self, newpath):
         print(f'Detected completed recording: {newpath}')
         path_base, filename = os.path.split(newpath)
 
-        time.sleep(0.5) #it needs some time to settle after being created
+        self.wait_for_file(newpath)
+#        time.sleep(0.5) #it needs some time to settle after being created
 
         self.upload.data['name'] = filename
         self.upload.set_recording(newpath, cache=True)
