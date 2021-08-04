@@ -164,14 +164,18 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             file_paths = map(lambda x: x.strip(), file_paths)
             file_paths = list(filter(lambda x: len(x) > 0, file_paths))
             if file_type == 'file':
-               for path in file_paths:
-                   self.upload.add_file(path, cache=True) 
+                for path in file_paths:
+                    self.upload.add_file(path, cache=True) 
             elif file_type == 'image':
-               for path in file_paths:
-                   self.upload.add_image(path, cache=True) 
+                for path in file_paths:
+                    self.upload.add_image(path, cache=True) 
             elif file_type == 'git':
-               for path in file_paths:
-                   self.upload.add_git(path) 
+                for path in file_paths:
+                    try:
+                        self.upload.add_git(path) 
+                    except git.exc.InvalidGitRepositoryError as e:
+                        print(f'Warning: {path} is not a valid git repo')
+                        raise
 
         #Add tag-associated images
         tagparse = boolparse.TagAlgebra(self.upload.data['tags'])

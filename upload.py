@@ -125,7 +125,7 @@ class Upload():
         the given path.
         """
         basename, filename = os.path.split(path)
-        repo = git.Repo(basename)
+        repo = git.Repo(basename, search_parent_directories=True)
         remote = repo.remote().url
         relpath = os.path.relpath(path, repo.working_dir)
 
