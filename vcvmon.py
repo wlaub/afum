@@ -21,6 +21,24 @@ import config
 
 import boolparse
 
+try:
+    import pynotifier
+    def notify(title, value, urgency="low"):
+        n = pynotifier.Notification(
+            title = title,
+            description = value,
+            app_name = 'vcvmon',
+            duration = 2, #not that notify-osd cares
+            urgency=urgency,
+            )
+        n.send()
+
+except ImportError as e:
+    print(f'Note: {e}')
+    print(f'Notifications will not be displated')
+    def notify(*args, **kwargs):
+        pass
+
 class State(Enum):
     IDLE=1
     RECORDING=2
@@ -196,6 +214,7 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         self.state = State.RECORDING
 
         print(f'Started watching pending recording: {self.recording_path}')
+        notify(f'Started watching', f'{self.recording_path}')
 
     def validate(self, newpath):
         try:
@@ -252,6 +271,7 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             #Push the patches repo
 
         print(f'Finished processing new recording {filename}')
+        notify(f'Finished processing', f'new recording {filename}')
             
         self.clear() 
 
@@ -282,6 +302,7 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
                     self.start_watching(path)
                 except Exception as e:
                     print(f'Error: Failed to start watching because {e}')
+                    notify(f"Error", f"Failed to start watching because {e}")
         elif self.state in [State.RECORDING, State.FINALIZING]:
             if base == self.recording_base:
                 self.finish_watching(path)
@@ -307,7 +328,7 @@ obs.schedule(handler, config.VCV_RECORD_DIR)
 obs.start()
 
 try:
-    while obs.isAlive():
+    while obs.is_alive():
         obs.join(1)
 except KeyboardInterrupt:
     obs.stop()
