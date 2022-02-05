@@ -7,6 +7,12 @@ UPLOAD_URL = 'https://techtech.technology'
 
 #VCVMON
 
+#Mapping specifying audio file format conversions that should happen before
+#generating an upload package
+FILE_CONVERT = {
+'wav': 'ogg'
+}
+
 #Where to look for patch files
 VCV_PATCH_DIR = os.path.expanduser('~/.Rack2/patches')
 #Where to watch for recordings

@@ -18,6 +18,7 @@ import psutil
 import zstandard, tarfile
 
 import audio_metadata as audiometa
+import pydub
 
 import upload
 import config
@@ -273,12 +274,40 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             time.sleep(delay)
         print(f'Finished waiting')
 
+    def convert_file(self, path):
+        """
+        If the config file calls for it, convert the given audio file into
+        another format with the same path
+        """
+        path_base, filename = os.path.split(path)
+        filebase, ext = os.path.splitext(filename)
+        ext = ext.strip('.')
+
+        if not ext in config.FILE_CONVERT.keys():
+            return path
+
+        newext = config.FILE_CONVERT[ext]
+        newfilename = filebase + '.' + newext
+        newpath = os.path.join(path_base, newfilename)
+
+        data = pydub.AudioSegment.from_file(path, ext)
+        data.export(newpath, format=newext)
+
+        return newpath
+
     def finish_watching(self, newpath):
         print(f'Detected completed recording: {newpath}')
         path_base, filename = os.path.split(newpath)
 
         self.wait_for_file(newpath)
 #        time.sleep(0.5) #it needs some time to settle after being created
+
+        if not self.validate(newpath):
+            notify('Discarded Recording', f'Recording file {filename} failed validation')
+            return
+
+        newpath  = self.convert_file(newpath)
+        path_base, filename = os.path.split(newpath)
 
         self.upload.data['name'] = filename
         self.upload.set_recording(newpath, cache=True)
