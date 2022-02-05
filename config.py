@@ -8,7 +8,7 @@ UPLOAD_URL = 'https://techtech.technology'
 #VCVMON
 
 #Where to look for patch files
-VCV_PATCH_DIR = os.path.expanduser('~/.Rack/patches')
+VCV_PATCH_DIR = os.path.expanduser('~/.Rack2/patches')
 #Where to watch for recordings
 VCV_RECORD_DIR = '/media/wlaub/Archive/Patches'
 #Where to store upload packages during recording

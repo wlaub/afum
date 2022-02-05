@@ -5,6 +5,7 @@ import json
 from enum import Enum
 import datetime
 import shutil
+import io
 
 import watchdog.events
 import watchdog.observers
@@ -13,6 +14,8 @@ import git
 from dateutil.parser import parse as date_parse
 
 import psutil
+
+import zstandard, tarfile
 
 import audio_metadata as audiometa
 
@@ -35,7 +38,7 @@ try:
 
 except ImportError as e:
     print(f'Note: {e}')
-    print(f'Notifications will not be displated')
+    print(f'Notifications will not be displayed')
     def notify(*args, **kwargs):
         pass
 
@@ -100,6 +103,30 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
         print(f'Warning: commit tag {name} already exists. Using {newname}')
         return newname
 
+    def load_patch_data(self, path):
+        """
+        Load the json data contain the patch regardless of whether it's a
+        v1 or v2 file
+        """
+        try:
+            with open(path, 'rb') as fp:
+                raw = zstandard.decompress(fp.read(), max_output_size=int(100e6))
+            rawfp = io.BytesIO(raw)
+            untar = tarfile.open(fileobj=rawfp)
+            with untar.extractfile('./patch.json') as fp:
+                patchdata = json.load(fp)
+        except zstandard.ZstdError:
+            with open(path, 'r') as fp:
+                patchdata = json.load(fp)
+        return patchdata
+
+    def get_custom_module_data(self, module):
+        """
+        In v1 custom module data goes at the root level, but in v2 it goes
+        under 'data'
+        """
+        if 'data' in module.keys(): return module['data']
+        return module
 
     def start_watching(self, newpath):
         self.start_time = time.time()
@@ -112,7 +139,7 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 
         self.patch_path = self.find_patch(newpath)
         print(f'Using patch file {self.patch_path}')
-        patchdata = json.load(open(self.patch_path, 'r'))
+        patchdata = self.load_patch_data(self.patch_path)
         modules = patchdata['modules']
         metafiles = list(filter(lambda x: x['model'] == 'MetadataFiles', modules))
         metamains = list(filter(lambda x: x['model'] == 'MetadataMain', modules))
@@ -120,7 +147,10 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
             print(f'Error: No MetadataMain instance detected. Ignoring recording.')
             return
 
-        metamain = metamains[0]
+        metamains = list(map(self.get_custom_module_data, metamains))
+        metafiles = list(map(self.get_custom_module_data, metafiles))
+
+        metamain = self.get_custom_module_data(metamains[0])
         if len(metamains) > 1:
             print(f'Warning: patch contains multiple MetadataMain instances. Using:')
             print(metamain)
@@ -324,6 +354,8 @@ class EventHandler(watchdog.events.FileSystemEventHandler):
 handler = EventHandler(config.VCV_PATCH_DIR)
 obs = watchdog.observers.Observer()
 obs.schedule(handler, config.VCV_RECORD_DIR)
+
+print(f'Starting VCV mon with target {config.VCV_RECORD_DIR}')
 
 obs.start()
 

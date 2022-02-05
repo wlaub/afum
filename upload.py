@@ -110,6 +110,7 @@ class Upload():
         Set the recording to the given file, and cache it locally if cache
         is True
         """
+        #TODO: convert wav files to ogg before caching?
         newpath = self.add_file_generic(path, self.directory, [], cache)
         self.data['recording'] = newpath
     
