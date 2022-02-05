@@ -32,3 +32,4 @@ typing-extensions==3.10.0.0
 urllib3==1.26.5
 watchdog==2.1.3
 wrapt==1.12.1
+zstandard==0.17.0
